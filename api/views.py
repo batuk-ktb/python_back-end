@@ -1,16 +1,18 @@
-from django.shortcuts import render
-
-from django.http import JsonResponse
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .models import TagReader, CameraData
+from .serializers import TagReaderSerializer
 from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
 import json
-from .models import CameraData
 
+# CameraData POST
 @csrf_exempt
 def add_camera_data(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
-
             camera = CameraData.objects.create(
                 container = data.get("container"),
                 date = data.get("date"),
@@ -30,10 +32,21 @@ def add_camera_data(request):
                 serialcode = data.get("serialcode"),
                 sizetypecode = data.get("sizetypecode", "")
             )
-
             return JsonResponse({"status": "ok", "id": camera.id})
-
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)})
-    else:
-        return JsonResponse({"status": "error", "message": "POST method required"})
+    return JsonResponse({"status": "error", "message": "POST method required"})
+
+# TagReader API
+class TagReaderView(APIView):
+    def get(self, request):
+        data = TagReader.objects.all().order_by('-date')
+        serializer = TagReaderSerializer(data, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = TagReaderSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)

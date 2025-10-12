@@ -1,6 +1,4 @@
-from django.db import models
-
-# Create your models here.
+from djongo import models
 
 class CameraData(models.Model):
     container = models.CharField(max_length=50)
@@ -23,3 +21,11 @@ class CameraData(models.Model):
 
     def __str__(self):
         return self.container
+
+class TagReader(models.Model):
+    name = models.CharField(max_length=100)
+    tag = models.CharField(max_length=100)
+    date = models.DateTimeField()
+
+    def __str__(self):
+        return f"{self.name} - {self.tag}"
