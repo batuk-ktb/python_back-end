@@ -32,7 +32,7 @@ def add_camera_data(request):
                 serialcode = data.get("serialcode"),
                 sizetypecode = data.get("sizetypecode", "")
             )
-            return JsonResponse({"status": "ok", "id": camera.id})
+            return JsonResponse({"status": "ok", "id":str(camera.id)})
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)})
     return JsonResponse({"status": "error", "message": "POST method required"})
