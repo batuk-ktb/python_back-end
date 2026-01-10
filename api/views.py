@@ -30,7 +30,7 @@ def add_camera_data(request):
                 ownercompany=data.get("ownercompany"),
                 readconfidence=data.get("readconfidence"),
                 serialcode=data.get("serialcode"),
-                sizetypecode=data.get("sizetypecode", "")
+                sizetypecode=data.get("sizetypecode", ""),
                 ipaddress=data.get("ipaddress")
             )
             return JsonResponse({"status": "ok", "id": str(camera.id)})

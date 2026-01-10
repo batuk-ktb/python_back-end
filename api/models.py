@@ -18,7 +18,7 @@ class CameraData(models.Model):
     readconfidence = models.CharField(max_length=10)
     serialcode = models.CharField(max_length=50)
     sizetypecode = models.CharField(max_length=10, blank=True)
-    ipaddress = models.CharField(max_length=20)
+    ipaddress = models.CharField(max_length=20,null=True, blank=True)
 
     def __str__(self):
         return self.container
