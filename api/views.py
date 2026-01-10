@@ -31,6 +31,7 @@ def add_camera_data(request):
                 readconfidence=data.get("readconfidence"),
                 serialcode=data.get("serialcode"),
                 sizetypecode=data.get("sizetypecode", "")
+                ipaddress=data.get("ipaddress")
             )
             return JsonResponse({"status": "ok", "id": str(camera.id)})
         except Exception as e:
@@ -62,6 +63,7 @@ def add_camera_data(request):
                         "readconfidence": camera.readconfidence,
                         "serialcode": camera.serialcode,
                         "sizetypecode": camera.sizetypecode,
+                        "ipaddress":camera.ipaddress,
                     }
                     return JsonResponse(data)
                 else:
