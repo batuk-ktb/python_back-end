@@ -38,11 +38,11 @@ def add_camera_data(request):
             return JsonResponse({"status": "error", "message": str(e)})
 
     elif request.method == "GET":
-        container = request.GET.get("container")
-        if container:
+        ipaddress = request.GET.get("ipaddress")
+        if ipaddress:
             try:
-                # container-аар шүүгээд хамгийн сүүлийн бичлэгийг авах
-                camera = CameraData.objects.filter(container=container).order_by('-date').first()
+                # ipaddress-аар шүүгээд хамгийн сүүлийн бичлэгийг авах
+                camera = CameraData.objects.filter(ipaddress=ipaddress).order_by('-date').first()
                 if camera:
                     data = {
                         "id": camera.id,
@@ -71,7 +71,7 @@ def add_camera_data(request):
             except Exception as e:
                 return JsonResponse({"status": "error", "message": str(e)})
         else:
-            return JsonResponse({"status": "error", "message": "container parameter required"})
+            return JsonResponse({"status": "error", "message": "ipaddress parameter required"})
 
     return JsonResponse({"status": "error", "message": "Only GET or POST methods allowed"})
 
