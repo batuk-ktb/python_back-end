@@ -12,6 +12,7 @@ import json
 def add_camera_data(request):
     if request.method == "POST":
         try:
+            print('data here ---',request.body)
             data = json.loads(request.body)
             camera = CameraData.objects.create(
                 container=data.get("container"),
@@ -98,6 +99,7 @@ class TagReaderView(APIView):
 
     def post(self, request):
         serializer = TagReaderSerializer(data=request.data)
+        print('tag reader =====', request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
