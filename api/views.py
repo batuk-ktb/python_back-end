@@ -79,20 +79,20 @@ def add_camera_data(request):
 # TagReader API
 class TagReaderView(APIView):
     def get(self, request):
-        name = request.GET.get('name')  # ?name=... параметр авна
-        if name:
-            # name-аар шүүгээд хамгийн сүүлийн бичлэгийг авах
-            tag = TagReader.objects.filter(name=name).order_by('-date').first()
+        ipaddress = request.GET.get('ipaddress')  # ?ipaddress=... параметр авна
+        if ipaddress:
+            # ipaddress-аар шүүгээд хамгийн сүүлийн бичлэгийг авах
+            tag = TagReader.objects.filter(ipaddress=ipaddress).order_by('-date').first()
             if tag:
                 serializer = TagReaderSerializer(tag)
                 return Response(serializer.data)
             else:
                 return Response(
-                    {"message": f"No TagReader found with name '{name}'"},
+                    {"message": f"No TagReader found with ipaddress '{ipaddress}'"},
                     status=status.HTTP_404_NOT_FOUND
                 )
         else:
-            # name параметр байхгүй бол бүх өгөгдлийг буцаана
+            # ipaddress параметр байхгүй бол бүх өгөгдлийг буцаана
             data = TagReader.objects.all().order_by('-date')
             serializer = TagReaderSerializer(data, many=True)
             return Response(serializer.data)
