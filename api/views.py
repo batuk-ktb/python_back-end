@@ -1,10 +1,11 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import TagReader, CameraData
+from .models import TagReader, CameraData, Transaction
 from .serializers import TagReaderSerializer
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
+from .utils import save_container
 import json
 
 # CameraData POST
@@ -104,3 +105,100 @@ class TagReaderView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+@csrf_exempt
+def save_transaction(request):
+    if request.method == "GET":
+        page = int(request.GET.get("page", 1))
+        puu_id = request.GET.get("puuId") 
+        page_size = 10
+
+        start = (page - 1) * page_size
+        end = start + page_size
+
+        qs = Transaction.objects.select_related(
+            "conR1", "conL1", "conR2", "conL2", "conR3", "conL3", "conR4", "conL4"
+        ).order_by("-created_at")
+        if puu_id:
+            qs = qs.filter(puuId=puu_id)
+            
+        total = qs.count()
+        data = qs[start:end]
+
+        result = []
+
+        for t in data:
+            item = {
+                "id": t.id,
+                "puuName": t.puuName,
+                "puuId": t.puuId,
+                "Weight": t.Weight,
+                "tag_id": t.tag_id,
+                "tag_date": t.tag_date.strftime("%Y-%m-%d %H:%M:%S") if t.tag_date else None,
+                "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "containers": {}
+            }
+
+            # Loop through all 8 container fields
+            for field_name in ["conR1", "conL1", "conR2", "conL2", "conR3", "conL3", "conR4", "conL4"]:
+                container = getattr(t, field_name)
+                if container:
+                    item["containers"][field_name] = {
+                        "id": container.id,
+                        "container_id": container.container_id,
+                        "date": container.date.strftime("%Y-%m-%d %H:%M:%S") if container.date else None,
+                        "control_digit": container.control_digit,
+                        "readconfidence": container.readconfidence
+                    }
+                else:
+                    item["containers"][field_name] = None
+
+            result.append(item)
+
+        return JsonResponse({
+            "transactions": result,
+            "totalPages": (total + page_size - 1) // page_size,
+        })
+    elif request.method == "POST":
+        try:
+            body = json.loads(request.body)
+
+            transaction = Transaction.objects.create(
+                puuName=body.get("puuName"),
+                puuId=body.get("puuId"),
+                Weight=body.get("Weight"),
+
+                tag_id=body.get("tag", {}).get("id"),
+                tag_date=body.get("tag", {}).get("date"),
+
+                conR1=save_container(body.get("conR1")),
+                conL1=save_container(body.get("conL1")),
+                conR2=save_container(body.get("conR2")),
+                conL2=save_container(body.get("conL2")),
+                conR3=save_container(body.get("conR3")),
+                conL3=save_container(body.get("conL3")),
+                conR4=save_container(body.get("conR4")),
+                conL4=save_container(body.get("conL4")),
+            )
+
+            # ===== authentication logic =====
+            authentication = 0
+
+            if transaction.Weight > 1000:
+                authentication = 1
+            else:
+                authentication = 2
+
+            return JsonResponse({
+                "success": True,
+                "authentication": authentication,
+                "id": transaction.id
+            })
+
+        except Exception as e:
+            return JsonResponse({
+                "success": False,
+                "error": str(e)
+            }, status=500)
+
+    return JsonResponse({"error": "POST only"}, status=405)

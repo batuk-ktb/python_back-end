@@ -31,3 +31,34 @@ class TagReader(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.tag}"
+
+class Container(models.Model):
+    container_id = models.CharField(max_length=50, null=True, blank=True)
+    date = models.DateTimeField(null=True, blank=True)
+    control_digit = models.CharField(max_length=10, null=True, blank=True)
+    readconfidence = models.FloatField(null=True, blank=True)
+
+    def __str__(self):
+        return str(self.container_id)
+class Transaction(models.Model):
+    puuName = models.CharField(max_length=100)
+    puuId = models.IntegerField()
+    Weight = models.FloatField()
+
+    tag_id = models.CharField(max_length=100, null=True, blank=True)
+    tag_date = models.DateTimeField(null=True, blank=True)
+
+    # containers (optional)
+    conR1 = models.ForeignKey(Container, null=True, blank=True, on_delete=models.SET_NULL, related_name="conR1")
+    conL1 = models.ForeignKey(Container, null=True, blank=True, on_delete=models.SET_NULL, related_name="conL1")
+    conR2 = models.ForeignKey(Container, null=True, blank=True, on_delete=models.SET_NULL, related_name="conR2")
+    conL2 = models.ForeignKey(Container, null=True, blank=True, on_delete=models.SET_NULL, related_name="conL2")
+    conR3 = models.ForeignKey(Container, null=True, blank=True, on_delete=models.SET_NULL, related_name="conR3")
+    conL3 = models.ForeignKey(Container, null=True, blank=True, on_delete=models.SET_NULL, related_name="conL3")
+    conR4 = models.ForeignKey(Container, null=True, blank=True, on_delete=models.SET_NULL, related_name="conR4")
+    conL4 = models.ForeignKey(Container, null=True, blank=True, on_delete=models.SET_NULL, related_name="conL4")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.puuName} - {self.Weight}"
