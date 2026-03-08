@@ -33,7 +33,8 @@ def add_camera_data(request):
                 readconfidence=data.get("readconfidence"),
                 serialcode=data.get("serialcode"),
                 sizetypecode=data.get("sizetypecode", ""),
-                ipaddress=data.get("ipaddress")
+                ipaddress=data.get("ipaddress"),
+                plateImage=date.get("plateImage")
             )
             return JsonResponse({"status": "ok", "id": str(camera.id)})
         except Exception as e:
@@ -66,6 +67,7 @@ def add_camera_data(request):
                         "serialcode": camera.serialcode,
                         "sizetypecode": camera.sizetypecode,
                         "ipaddress":camera.ipaddress,
+                        "plateImage":camera.plateImage
                     }
                     return JsonResponse(data)
                 else:
@@ -149,6 +151,7 @@ def save_transaction(request):
                         "date": container.date.strftime("%Y-%m-%d %H:%M:%S") if container.date else None,
                         "control_digit": container.control_digit,
                         "readconfidence": container.readconfidence
+                        "plateImage": container.plateImage
                     }
                 else:
                     item["containers"][field_name] = None

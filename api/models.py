@@ -19,7 +19,7 @@ class CameraData(models.Model):
     serialcode = models.CharField(max_length=50)
     sizetypecode = models.CharField(max_length=10, blank=True)
     ipaddress = models.CharField(max_length=20,null=True, blank=True)
-
+    plateImage = models.TextField(null=True, blank=True)
     def __str__(self):
         return self.container
 
@@ -37,9 +37,11 @@ class Container(models.Model):
     date = models.DateTimeField(null=True, blank=True)
     control_digit = models.CharField(max_length=10, null=True, blank=True)
     readconfidence = models.FloatField(null=True, blank=True)
+    plateImage = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return str(self.container_id)
+        
 class Transaction(models.Model):
     puuName = models.CharField(max_length=100)
     puuId = models.IntegerField()
