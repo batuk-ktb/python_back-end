@@ -150,7 +150,7 @@ def save_transaction(request):
                         "container_id": container.container_id,
                         "date": container.date.strftime("%Y-%m-%d %H:%M:%S") if container.date else None,
                         "control_digit": container.control_digit,
-                        "readconfidence": container.readconfidence
+                        "readconfidence": container.readconfidence,
                         "plateImage": container.plateImage
                     }
                 else:
