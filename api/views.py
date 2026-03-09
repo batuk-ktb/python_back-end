@@ -34,7 +34,7 @@ def add_camera_data(request):
                 serialcode=data.get("serialcode"),
                 sizetypecode=data.get("sizetypecode", ""),
                 ipaddress=data.get("ipaddress"),
-                plateImage=date.get("plateImage")
+                plateImage=data.get("plateImage")
             )
             return JsonResponse({"status": "ok", "id": str(camera.id)})
         except Exception as e:
