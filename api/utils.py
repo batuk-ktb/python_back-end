@@ -10,4 +10,5 @@ def save_container(data):
         date=data.get("date"),
         control_digit=data.get("control_digit"),
         readconfidence=data.get("readconfidence"),
+        plateImage=data.get("plateImage")
     )

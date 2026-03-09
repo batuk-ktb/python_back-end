@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import TagReader, CameraData, Transaction
+from .models import TagReader, CameraData, Transaction, Container
 from .serializers import TagReaderSerializer
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
@@ -118,9 +118,7 @@ def save_transaction(request):
         start = (page - 1) * page_size
         end = start + page_size
 
-        qs = Transaction.objects.select_related(
-            "conR1", "conL1", "conR2", "conL2", "conR3", "conL3", "conR4", "conL4"
-        ).order_by("-created_at")
+        qs = Transaction.objects.all().order_by("-created_at")
         if puu_id:
             qs = qs.filter(puuId=puu_id)
             
@@ -140,7 +138,21 @@ def save_transaction(request):
                 "created_at": t.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                 "containers": {}
             }
+            print('t value', t.__dict__)
 
+            print('r1,', getattr(t, 'conR1_id'))
+            print('l1,', getattr(t, 'conL1_id'))
+            print("R1:", t.conR1_id, t.conR1)
+            print("L1:", t.conL1_id, t.conL1)
+
+            print("Transaction FK:", t.conR1_id)
+
+            print("Container exists:", Container.objects.filter(id=t.conR1_id).exists())
+
+            print("Container:", Container.objects.filter(id=t.conR1_id).first())
+            print("Container exists:", Container.objects.filter(id=t.conL1_id).exists())
+
+            print("Container:", Container.objects.filter(id=t.conL1_id).first())
             # Loop through all 8 container fields
             for field_name in ["conR1", "conL1", "conR2", "conL2", "conR3", "conL3", "conR4", "conL4"]:
                 container = getattr(t, field_name)
