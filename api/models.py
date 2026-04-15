@@ -64,3 +64,20 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.puuName} - {self.Weight}"
+
+
+class RemoteSyncLog(models.Model):
+    transaction_id = models.IntegerField()
+    puuId = models.IntegerField()
+    puuName = models.CharField(max_length=100)
+    sent_data = models.TextField()       # JSON of data sent to remote server
+    response_data = models.TextField()   # JSON of remote server response
+    status = models.CharField(max_length=20)  # 'success' or 'error'
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = 'api'
+        db_table = 'SendingData'
+
+    def __str__(self):
+        return f"Sync {self.transaction_id} - {self.status}"

@@ -5,8 +5,38 @@ from .models import TagReader, CameraData, Transaction, Container
 from .serializers import TagReaderSerializer
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
-from .utils import save_container
+from pymongo import MongoClient
+import requests
+import struct
 import json
+
+CAM_TO_CON = {
+    'cam1': 'conR1',
+    'cam2': 'conL1',
+    'cam3': 'conR2',
+    'cam4': 'conL2',
+    'cam5': 'conR3',
+    'cam6': 'conL3',
+    'cam7': 'conR4',
+    'cam8': 'conL4',
+}
+
+def get_carweight_db():
+    client = MongoClient('mongodb://localhost:27017/')
+    return client['carweight']
+
+def read_weight(puu_id):
+    offset = (puu_id - 1) * 30
+    url = f'http://172.16.92.2:30511/read/3/{offset}/30'
+    resp = requests.get(url, timeout=5)
+    data = resp.json()
+    if not data:
+        return 0.0
+    reg1 = int(data[20])
+    reg2 = int(data[21])
+    # Two 16-bit registers as little-endian 32-bit float, scaled by 10
+    weight = struct.unpack('<f', struct.pack('<HH', reg1, reg2))[0] * 10
+    return round(weight, 2)
 
 # CameraData POST
 @csrf_exempt
@@ -34,7 +64,7 @@ def add_camera_data(request):
                 serialcode=data.get("serialcode"),
                 sizetypecode=data.get("sizetypecode", ""),
                 ipaddress=data.get("ipaddress"),
-                plateImage=data.get("plateImage")
+                plateImage=data.get("plateimage")
             )
             return JsonResponse({"status": "ok", "id": str(camera.id)})
         except Exception as e:
@@ -177,32 +207,100 @@ def save_transaction(request):
     elif request.method == "POST":
         try:
             body = json.loads(request.body)
+            puu_id = body.get("puuId")
+            weight = read_weight(puu_id)
 
+            # 1. Look up PUU from carweight.AllScales
+            db = get_carweight_db()
+            puu = db['AllScales'].find_one({'id': puu_id})
+            if not puu:
+                return JsonResponse({"success": False, "error": f"PUU {puu_id} not found"}, status=404)
+
+            puu_name = puu.get('name', '')
+
+            # 2. Get latest RFID tag using rfid IP
+            rfid_ip = puu.get('rfid')
+            tag = TagReader.objects.filter(ipaddress=rfid_ip).order_by('-date').first() if rfid_ip else None
+
+            # 3. Get latest camera data for each cam, create Container objects (only if containersEnabled)
+            containers = {}
+            containers_data = {}
+            if puu.get('containersEnabled', False):
+                for cam_key, con_key in CAM_TO_CON.items():
+                    cam_ip = puu.get(cam_key)
+                    if cam_ip:
+                        cam = CameraData.objects.filter(ipaddress=cam_ip).order_by('-date').first()
+                        if cam:
+                            container = Container.objects.create(
+                                container_id=cam.container,
+                                date=cam.date,
+                                control_digit=cam.controldigit,
+                                readconfidence=float(cam.readconfidence) if cam.readconfidence else None,
+                                plateImage=cam.plateImage,
+                            )
+                            containers[con_key] = container
+                            containers_data[con_key] = {
+                                "container": cam.container,
+                                "date": cam.date.isoformat() if cam.date else None,
+                                "controldigit": cam.controldigit,
+                                "readconfidence": cam.readconfidence,
+                                "plateImage": cam.plateImage,
+                            }
+                        else:
+                            containers[con_key] = None
+                            containers_data[con_key] = None
+                    else:
+                        containers[con_key] = None
+                        containers_data[con_key] = None
+
+            # 4. Create Transaction
             transaction = Transaction.objects.create(
-                puuName=body.get("puuName"),
-                puuId=body.get("puuId"),
-                Weight=body.get("Weight"),
-
-                tag_id=body.get("tag", {}).get("id"),
-                tag_date=body.get("tag", {}).get("date"),
-
-                conR1=save_container(body.get("conR1")),
-                conL1=save_container(body.get("conL1")),
-                conR2=save_container(body.get("conR2")),
-                conL2=save_container(body.get("conL2")),
-                conR3=save_container(body.get("conR3")),
-                conL3=save_container(body.get("conL3")),
-                conR4=save_container(body.get("conR4")),
-                conL4=save_container(body.get("conL4")),
+                puuName=puu_name,
+                puuId=puu_id,
+                Weight=weight,
+                tag_id=tag.tag if tag else None,
+                tag_date=tag.date if tag else None,
+                conR1=containers.get('conR1'),
+                conL1=containers.get('conL1'),
+                conR2=containers.get('conR2'),
+                conL2=containers.get('conL2'),
+                conR3=containers.get('conR3'),
+                conL3=containers.get('conL3'),
+                conR4=containers.get('conR4'),
+                conL4=containers.get('conL4'),
             )
 
-            # ===== authentication logic =====
-            authentication = 0
+            # 5. Build sent_data and save to SendingData
+            sent_data = {
+                "puuId": puu_id,
+                "puuName": puu_name,
+                "Weight": weight,
+                "tag": {
+                    "tag": tag.tag if tag else None,
+                    "date": tag.date.isoformat() if tag and tag.date else None,
+                },
+                "containers": containers_data,
+            }
+            try:
+                remote_resp = requests.post(
+                    'http://172.16.92.5/',
+                    json=sent_data,
+                    timeout=5,
+                )
+                response_data = remote_resp.text
+                sync_status = 'success'
+            except Exception as e:
+                response_data = str(e)
+                sync_status = 'error'
 
-            if transaction.Weight > 1000:
-                authentication = 1
-            else:
-                authentication = 2
+            MongoClient('mongodb://localhost:27017/')['carweight']['SendingData'].insert_one({
+                'transaction_id': transaction.id,
+                'sent_data': sent_data,
+                'response_data': response_data,
+                'status': sync_status,
+            })
+
+            authentication = 1 if transaction.Weight > 1000 else 2
 
             return JsonResponse({
                 "success": True,

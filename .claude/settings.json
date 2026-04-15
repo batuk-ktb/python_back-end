@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python manage.py shell -c \"from pymongo import MongoClient; client = MongoClient\\('mongodb://localhost:27017/'\\); db = client['mydatabase']; print\\(db.list_collection_names\\(\\)\\)\")",
+      "Bash(venv/Scripts/python -c \"from pymongo import MongoClient; client = MongoClient\\('mongodb://localhost:27017/'\\); db = client['mydatabase']; print\\(db.list_collection_names\\(\\)\\)\")",
+      "Bash(venv/Scripts/python manage.py makemigrations)",
+      "Bash(venv/Scripts/python manage.py migrate --database=remote_sync)",
+      "Bash(venv/Scripts/python manage.py migrate)",
+      "Bash(venv/Scripts/python -c ':*)",
+      "Bash(venv/Scripts/pip install:*)"
+    ]
+  }
+}
