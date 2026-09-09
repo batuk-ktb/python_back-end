@@ -131,11 +131,23 @@ class TagReaderView(APIView):
             return Response(serializer.data)
 
     def post(self, request):
+        event_status = request.data.get('status', 'tag_event')
+        if event_status in ('disconnected', 'reconnected'):
+            return Response({"status": "ok"}, status=status.HTTP_200_OK)
+
+        # Skip saving if the tag EPC value is missing or empty — an empty-tag record
+        # would become the latest entry for this IP and hide the real previous tag read.
+        tag_value = request.data.get('tag', '')
+        if not tag_value or not str(tag_value).strip():
+            print('tag reader — empty tag skipped', request.data)
+            return Response({"status": "ok", "note": "empty tag skipped"}, status=status.HTTP_200_OK)
+
         serializer = TagReaderSerializer(data=request.data)
         print('tag reader =====', request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        print('tag reader errors =====', serializer.errors)
         return Response({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 @csrf_exempt
@@ -218,9 +230,13 @@ def save_transaction(request):
 
             puu_name = puu.get('name', '')
 
-            # 2. Get latest RFID tag using rfid IP
+            # 2. Get latest RFID tag using rfid IP (exclude empty-tag records)
             rfid_ip = puu.get('rfid')
-            tag = TagReader.objects.filter(ipaddress=rfid_ip).order_by('-date').first() if rfid_ip else None
+            tag = (TagReader.objects
+                   .filter(ipaddress=rfid_ip)
+                   .exclude(tag='')
+                   .order_by('-date')
+                   .first()) if rfid_ip else None
 
             # 3. Get latest camera data for each cam, create Container objects (only if containersEnabled)
             containers = {}
@@ -271,14 +287,18 @@ def save_transaction(request):
             )
 
             # 5. Build sent_data and save to SendingData
+            # Only include tag when tag.tag is non-empty — don't save {tag:null, date:null}
+            tag_for_save = None
+            if tag and tag.tag:
+                tag_for_save = {
+                    "tag": tag.tag,
+                    "date": tag.date.isoformat() if tag and tag.date else None,
+                }
             sent_data = {
                 "puuId": puu_id,
                 "puuName": puu_name,
                 "Weight": weight,
-                "tag": {
-                    "tag": tag.tag if tag else None,
-                    "date": tag.date.isoformat() if tag and tag.date else None,
-                },
+                "tag": tag_for_save,
                 "containers": containers_data,
             }
             try:
@@ -293,11 +313,14 @@ def save_transaction(request):
                 response_data = str(e)
                 sync_status = 'error'
 
+            # Include puuId at top level so bg-poller's dedup query finds this record
             MongoClient('mongodb://localhost:27017/')['carweight']['SendingData'].insert_one({
                 'transaction_id': transaction.id,
-                'sent_data': sent_data,
-                'response_data': response_data,
-                'status': sync_status,
+                'puuId':          puu_id,
+                'puuName':        puu_name,
+                'sent_data':      sent_data,
+                'response_data':  response_data,
+                'status':         sync_status,
             })
 
             authentication = 1 if transaction.Weight > 1000 else 2

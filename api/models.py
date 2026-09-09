@@ -25,9 +25,10 @@ class CameraData(models.Model):
 
 class TagReader(models.Model):
     name = models.CharField(max_length=100)
-    tag = models.CharField(max_length=100)
+    tag = models.CharField(max_length=100, blank=True)   # TID
+    epc = models.CharField(max_length=100, blank=True, null=True)
     date = models.DateTimeField()
-    ipaddress = models.CharField(max_length=20,null=True, blank=True)
+    ipaddress = models.CharField(max_length=20, null=True, blank=True)
 
     def __str__(self):
         return f"{self.name} - {self.tag}"
